@@ -16,8 +16,8 @@ pub fn bench_raw_node(c: &mut Criterion) {
 }
 
 fn quick_raw_node(logger: &slog::Logger) -> RawNode<MemStorage> {
-    let id = 1;
-    let conf_state = ConfState::from((vec![1], vec![]));
+    let id = "1".to_string();
+    let conf_state = ConfState::from((vec![1.to_string()], vec![]));
     let storage = MemStorage::new_with_conf_state(conf_state);
     let config = Config::new(id);
     RawNode::new(&config, storage, logger).unwrap()

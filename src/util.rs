@@ -120,24 +120,24 @@ pub fn majority(total: usize) -> usize {
 
 /// A convenient struct that handles queries to both HashSet.
 pub struct Union<'a> {
-    first: &'a HashSet<u64>,
-    second: &'a HashSet<u64>,
+    first: &'a HashSet<String>,
+    second: &'a HashSet<String>,
 }
 
 impl<'a> Union<'a> {
     /// Creates a union.
-    pub fn new(first: &'a HashSet<u64>, second: &'a HashSet<u64>) -> Union<'a> {
+    pub fn new(first: &'a HashSet<String>, second: &'a HashSet<String>) -> Union<'a> {
         Union { first, second }
     }
 
     /// Checks if id shows up in either HashSet.
     #[inline]
-    pub fn contains(&self, id: u64) -> bool {
+    pub fn contains(&self, id: String) -> bool {
         self.first.contains(&id) || self.second.contains(&id)
     }
 
     /// Returns an iterator iterates the distinct values in two sets.
-    pub fn iter(&self) -> impl Iterator<Item = u64> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = String> + '_ {
         self.first.union(self.second).cloned()
     }
 

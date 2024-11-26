@@ -61,14 +61,14 @@ impl Debug for Index {
 }
 
 pub trait AckedIndexer {
-    fn acked_index(&self, voter_id: u64) -> Option<Index>;
+    fn acked_index(&self, voter_id: String) -> Option<Index>;
 }
 
-pub type AckIndexer = HashMap<u64, Index>;
+pub type AckIndexer = HashMap<String, Index>;
 
 impl AckedIndexer for AckIndexer {
     #[inline]
-    fn acked_index(&self, voter: u64) -> Option<Index> {
+    fn acked_index(&self, voter: String) -> Option<Index> {
         self.get(&voter).cloned()
     }
 }

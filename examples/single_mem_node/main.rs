@@ -29,7 +29,7 @@ fn main() {
     // Create a storage for Raft, and here we just use a simple memory storage.
     // You need to build your own persistent storage in your production.
     // Please check the Storage trait in src/storage.rs to see how to implement one.
-    let storage = MemStorage::new_with_conf_state(ConfState::from((vec![1], vec![])));
+    let storage = MemStorage::new_with_conf_state(ConfState::from((vec![1.to_string()], vec![])));
 
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
@@ -43,7 +43,7 @@ fn main() {
     // Create the configuration for the Raft node.
     let cfg = Config {
         // The unique ID for the Raft node.
-        id: 1,
+        id: 1.to_string(),
         // Election tick is for how long the follower may campaign again after
         // it doesn't receive any message from the leader.
         election_tick: 10,

@@ -16,7 +16,7 @@ pub struct Configuration {
 
 impl Configuration {
     /// Creates a new configuration using the given IDs.
-    pub fn new(voters: HashSet<u64>) -> Configuration {
+    pub fn new(voters: HashSet<String>) -> Configuration {
         Configuration {
             incoming: MajorityConfig::new(voters),
             outgoing: MajorityConfig::default(),
@@ -53,7 +53,7 @@ impl Configuration {
     /// Takes a mapping of voters to yes/no (true/false) votes and returns a result
     /// indicating whether the vote is pending, lost, or won. A joint quorum requires
     /// both majority quorums to vote in favor.
-    pub fn vote_result(&self, check: impl Fn(u64) -> Option<bool>) -> VoteResult {
+    pub fn vote_result(&self, check: impl Fn(String) -> Option<bool>) -> VoteResult {
         let i = self.incoming.vote_result(&check);
         let o = self.outgoing.vote_result(check);
         match (i, o) {
@@ -85,7 +85,7 @@ impl Configuration {
 
     /// Check if an id is a voter.
     #[inline]
-    pub fn contains(&self, id: u64) -> bool {
+    pub fn contains(&self, id: String) -> bool {
         self.incoming.contains(&id) || self.outgoing.contains(&id)
     }
 

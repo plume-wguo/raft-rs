@@ -24,7 +24,7 @@ use crate::ProgressTracker;
 #[derive(Default)]
 pub struct Status<'a> {
     /// The ID of the current node.
-    pub id: u64,
+    pub id: String,
     /// The hardstate of the raft, representing voted state.
     pub hs: HardState,
     /// The softstate of the raft, representing proposed state.
@@ -39,7 +39,7 @@ impl<'a> Status<'a> {
     /// Gets a copy of the current raft status.
     pub fn new<T: Storage>(raft: &'a Raft<T>) -> Status<'a> {
         let mut s = Status {
-            id: raft.id,
+            id: raft.id.clone(),
             ..Default::default()
         };
         s.hs = raft.hard_state();

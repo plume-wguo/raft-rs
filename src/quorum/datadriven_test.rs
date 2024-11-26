@@ -7,8 +7,8 @@ fn test_quorum(data: &TestData) -> String {
     // Two majority configs. The first one is always used (though it may
     // be empty) and the second one is used iff joint is true.
     let mut joint = false;
-    let mut ids: Vec<u64> = Vec::new();
-    let mut idsj: Vec<u64> = Vec::new();
+    let mut ids: Vec<String> = Vec::new();
+    let mut idsj: Vec<String> = Vec::new();
 
     // The committed indexes for the nodes in the config in the order in
     // which they appear in (ids,idsj), without repetition. An underscore
@@ -36,8 +36,8 @@ fn test_quorum(data: &TestData) -> String {
         for val in &arg.vals {
             match arg.key.as_str() {
                 "cfg" => {
-                    let n: u64 = val.parse().expect("type of n should be u64");
-                    ids.push(n);
+                    // let n: String = val.parse().expect("type of n should be u64");
+                    ids.push(val.clone());
                 }
                 "cfgj" => {
                     joint = true;
@@ -45,8 +45,7 @@ fn test_quorum(data: &TestData) -> String {
                     if val == "zero" {
                         assert_eq!(arg.vals.len(), 1, "cannot mix 'zero' into configuration")
                     } else {
-                        let n: u64 = val.parse().expect("type of n should be u64");
-                        idsj.push(n);
+                        idsj.push(val.clone());
                     }
                 }
                 "idx" => {
@@ -96,20 +95,20 @@ fn test_quorum(data: &TestData) -> String {
         }
     }
 
-    let ids_set: HashSet<u64> = ids.iter().cloned().collect();
-    let idsj_set: HashSet<u64> = idsj.iter().cloned().collect();
+    let ids_set: HashSet<String> = ids.iter().cloned().collect();
+    let idsj_set: HashSet<String> = idsj.iter().cloned().collect();
 
     // Build the two majority configs.
     let c = MajorityConfig::new(ids_set);
     let cj = MajorityConfig::new(idsj_set);
 
-    let make_lookuper = |idxs: &[Index], ids: &[u64], idsj: &[u64]| -> AckIndexer {
+    let make_lookuper = |idxs: &[Index], ids: &[String], idsj: &[String]| -> AckIndexer {
         let mut l = AckIndexer::default();
         // next to consume from idxs
         let mut p: usize = 0;
         for id in ids.iter().chain(idsj) {
             if !l.contains_key(id) && p < idxs.len() {
-                l.insert(*id, idxs[p]);
+                l.insert(id.clone(), idxs[p]);
                 p += 1;
             }
         }
@@ -202,12 +201,12 @@ fn test_quorum(data: &TestData) -> String {
                 // test overlaying
                 // If the committed index was definitely above the currently inspected idx,
                 // the result shouldn't change if we lower it further.
-                for &id in c.ids() {
-                    if let Some(iidx) = l.acked_index(id) {
+                for id in c.ids() {
+                    if let Some(iidx) = l.acked_index(id.clone()) {
                         if idx.0 > iidx.index {
                             // try index - 1
                             l.insert(
-                                id,
+                                id.clone(),
                                 Index {
                                     index: iidx.index - 1,
                                     group_id: iidx.group_id,
@@ -220,14 +219,14 @@ fn test_quorum(data: &TestData) -> String {
                                     buf,
                                     "{} <-- overlaying {}->{}",
                                     a_idx.0,
-                                    id,
+                                    id.clone(),
                                     iidx.index - 1
                                 )
                                 .unwrap();
                             }
                             // try 0
                             l.insert(
-                                id,
+                                id.clone(),
                                 Index {
                                     index: 0,
                                     group_id: iidx.group_id,
@@ -239,7 +238,7 @@ fn test_quorum(data: &TestData) -> String {
                                 writeln!(buf, "{} <-- overlaying {}->{}", a_idx.0, id, 0).unwrap();
                             }
                             // recovery
-                            l.insert(id, iidx);
+                            l.insert(id.clone(), iidx);
                         }
                     }
                 }

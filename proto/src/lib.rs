@@ -43,8 +43,8 @@ pub mod util {
 
     impl<Iter1, Iter2> From<(Iter1, Iter2)> for ConfState
     where
-        Iter1: IntoIterator<Item = u64>,
-        Iter2: IntoIterator<Item = u64>,
+        Iter1: IntoIterator<Item = String>,
+        Iter2: IntoIterator<Item = String>,
     {
         fn from((voters, learners): (Iter1, Iter2)) -> Self {
             let mut conf_state = ConfState::default();

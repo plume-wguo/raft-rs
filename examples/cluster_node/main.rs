@@ -18,7 +18,20 @@ use regex::Regex;
 
 use slog::{error, info, o};
 
+use structopt::StructOpt;
+
+#[derive(Debug, StructOpt)]
+struct Options {
+    #[structopt(long)]
+    raft_addr: String,
+    #[structopt(long)]
+    peer_addr: Option<String>,
+    #[structopt(long)]
+    id: u8,
+}
+
 fn main() {
+    // let options = Options::from_args();
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain)
@@ -28,7 +41,7 @@ fn main() {
         .fuse();
     let logger = slog::Logger::root(drain, o!());
 
-    const NUM_NODES: u32 = 5;
+    const NUM_NODES: u32 = 2;
     // Create 5 mailboxes to send/receive messages. Every node holds a `Receiver` to receive
     // messages from others, and uses the respective `Sender` to send messages to others.
     let (mut tx_vec, mut rx_vec) = (Vec::new(), Vec::new());
@@ -48,15 +61,15 @@ fn main() {
     let mut handles = Vec::new();
     for (i, rx) in rx_vec.into_iter().enumerate() {
         // A map[peer_id -> sender]. In the example we create 5 nodes, with ids in [1, 5].
-        let mailboxes = (1..6u64)
+        let peers = (1..3u64)
             .zip(tx_vec.iter().cloned())
             .map(|(id, tx)| (id.to_string(), tx))
             .collect();
         let mut node = match i {
             // Peer 1 is the leader.
-            j => Node::create_raft_leader((j + 1) as u64, rx, mailboxes, &logger),
+            j => Node::create_raft_leader((j + 1) as u64, rx, peers, &logger),
             // Other peers are followers.
-            _ => Node::create_raft_follower(rx, mailboxes),
+            _ => Node::create_raft_follower(rx, peers),
         };
         let proposals = Arc::clone(&proposals);
 
@@ -103,7 +116,7 @@ fn main() {
             on_ready(
                 raft_group,
                 &mut node.kv_pairs,
-                &node.mailboxes,
+                &node.peers,
                 &proposals,
                 &logger,
             );
@@ -163,7 +176,7 @@ struct Node {
     // None if the raft is not initialized.
     raft_group: Option<RawNode<MemStorage>>,
     my_mailbox: Receiver<Message>,
-    mailboxes: HashMap<String, Sender<Message>>,
+    peers: HashMap<String, Sender<Message>>,
     // Key-value pairs after applied. `MemStorage` only contains raft logs,
     // so we need an additional storage engine.
     kv_pairs: HashMap<String, String>,
@@ -193,7 +206,7 @@ impl Node {
         Node {
             raft_group,
             my_mailbox,
-            mailboxes,
+            peers: mailboxes,
             kv_pairs: Default::default(),
         }
     }
@@ -201,12 +214,12 @@ impl Node {
     // Create a raft follower.
     fn create_raft_follower(
         my_mailbox: Receiver<Message>,
-        mailboxes: HashMap<String, Sender<Message>>,
+        peers: HashMap<String, Sender<Message>>,
     ) -> Self {
         Node {
             raft_group: None,
             my_mailbox,
-            mailboxes,
+            peers,
             kv_pairs: Default::default(),
         }
     }
@@ -240,7 +253,7 @@ impl Node {
 fn on_ready(
     raft_group: &mut RawNode<MemStorage>,
     kv_pairs: &mut HashMap<String, String>,
-    mailboxes: &HashMap<String, Sender<Message>>,
+    peers: &HashMap<String, Sender<Message>>,
     proposals: &Mutex<VecDeque<Proposal>>,
     logger: &slog::Logger,
 ) {
@@ -255,7 +268,7 @@ fn on_ready(
     let handle_messages = |msgs: Vec<Message>| {
         for msg in msgs {
             let to = msg.to.clone();
-            if mailboxes[&to].send(msg).is_err() {
+            if peers[&to].send(msg).is_err() {
                 error!(
                     logger,
                     "send raft message to {} fail, let Raft retry it", to
@@ -303,6 +316,13 @@ fn on_ready(
                         kv_pairs.insert(caps[1].parse().unwrap(), caps[2].to_string());
                     }
                 }
+                info!(
+                    logger,
+                    "raft handle committed entry raft id {:?}, state = {:?}",
+                    rn.raft.id,
+                    rn.raft.state
+                );
+                info!(logger, "raft state = {:?}", rn.raft.leader_id);
                 if rn.raft.state == StateRole::Leader {
                     // The leader should response to the clients, tell them if their proposals
                     // succeeded or not.
@@ -422,7 +442,7 @@ fn propose(raft_group: &mut RawNode<MemStorage>, proposal: &mut Proposal) {
 
 // Proposes some conf change for peers [2, 5].
 fn add_all_followers(proposals: &Mutex<VecDeque<Proposal>>) {
-    for i in 2..6u64 {
+    for i in 2..3u64 {
         let mut conf_change = ConfChange::default();
         conf_change.node_id = i.to_string();
         conf_change.set_change_type(ConfChangeType::AddNode);

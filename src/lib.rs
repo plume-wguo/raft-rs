@@ -31,7 +31,7 @@ use slog::{Drain, o};
 
 // Select some defaults, then change what we need.
 let config = Config {
-    id: 1,
+    id: 1.to_string(),
     ..Default::default()
 };
 // Initialize logger.
@@ -41,7 +41,7 @@ let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
 config.validate().unwrap();
 // We'll use the built-in `MemStorage`, but you will likely want your own.
 // Finally, create our Raft node!
-let storage = MemStorage::new_with_conf_state((vec![1], vec![]));
+let storage = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
 let mut node = RawNode::new(&config, storage, &logger).unwrap();
 ```
 
@@ -54,8 +54,8 @@ channel `recv_timeout` to drive the Raft node at least every 100ms, calling
 ```rust
 # use slog::{Drain, o};
 # use raft::{Config, storage::MemStorage, raw_node::RawNode};
-# let config = Config { id: 1, ..Default::default() };
-# let store = MemStorage::new_with_conf_state((vec![1], vec![]));
+# let config = Config { id: 1.to_string(), ..Default::default() };
+# let store = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
 # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
 # let mut node = RawNode::new(&config, store, &logger).unwrap();
 # node.raft.become_candidate();
@@ -121,8 +121,8 @@ Here is a simple example to use `propose` and `step`:
 # };
 # use slog::{Drain, o};
 #
-# let config = Config { id: 1, ..Default::default() };
-# let store = MemStorage::new_with_conf_state((vec![1], vec![]));
+# let config = Config { id: 1.to_string(), ..Default::default() };
+# let store = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
 # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
 # let mut node = RawNode::new(&config, store, &logger).unwrap();
 # node.raft.become_candidate();
@@ -183,9 +183,9 @@ state:
 # use slog::{Drain, o};
 # use raft::{Config, storage::MemStorage, raw_node::RawNode};
 #
-# let config = Config { id: 1, ..Default::default() };
+# let config = Config { id: 1.to_string(), ..Default::default() };
 # config.validate().unwrap();
-# let store = MemStorage::new_with_conf_state((vec![1], vec![]));
+# let store = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
 # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
 # let mut node = RawNode::new(&config, store, &logger).unwrap();
 #
@@ -207,9 +207,9 @@ by one:
     # use slog::{Drain, o};
     # use raft::{Config, storage::MemStorage, raw_node::RawNode, StateRole};
     #
-    # let config = Config { id: 1, ..Default::default() };
+    # let config = Config { id: 1.to_string(), ..Default::default() };
     # config.validate().unwrap();
-    # let store = MemStorage::new_with_conf_state((vec![1], vec![]));
+    # let store = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
     # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
     # let mut node = RawNode::new(&config, store, &logger).unwrap();
     #
@@ -232,9 +232,9 @@ by one:
     # use slog::{Drain, o};
     # use raft::{Config, storage::MemStorage, raw_node::RawNode};
     #
-    # let config = Config { id: 1, ..Default::default() };
+    # let config = Config { id: 1.to_string(), ..Default::default() };
     # config.validate().unwrap();
-    # let store = MemStorage::new_with_conf_state((vec![1], vec![]));
+    # let store = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
     # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
     # let mut node = RawNode::new(&config, store, &logger).unwrap();
     #
@@ -261,9 +261,9 @@ by one:
     # use slog::{Drain, o};
     # use raft::{Config, storage::MemStorage, raw_node::RawNode, eraftpb::EntryType};
     #
-    # let config = Config { id: 1, ..Default::default() };
+    # let config = Config { id: 1.to_string(), ..Default::default() };
     # config.validate().unwrap();
-    # let store = MemStorage::new_with_conf_state((vec![1], vec![]));
+    # let store = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
     # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
     # let mut node = RawNode::new(&config, store, &logger).unwrap();
     #
@@ -316,9 +316,9 @@ by one:
     # use slog::{Drain, o};
     # use raft::{Config, storage::MemStorage, raw_node::RawNode};
     #
-    # let config = Config { id: 1, ..Default::default() };
+    # let config = Config { id: 1.to_string(), ..Default::default() };
     # config.validate().unwrap();
-    # let store = MemStorage::new_with_conf_state((vec![1], vec![]));
+    # let store = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
     # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
     # let mut node = RawNode::new(&config, store, &logger).unwrap();
     #
@@ -342,9 +342,9 @@ by one:
     # use slog::{Drain, o};
     # use raft::{Config, storage::MemStorage, raw_node::RawNode};
     #
-    # let config = Config { id: 1, ..Default::default() };
+    # let config = Config { id: 1.to_string(), ..Default::default() };
     # config.validate().unwrap();
-    # let store = MemStorage::new_with_conf_state((vec![1], vec![]));
+    # let store = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
     # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
     # let mut node = RawNode::new(&config, store, &logger).unwrap();
     #
@@ -366,9 +366,9 @@ by one:
     # use slog::{Drain, o};
     # use raft::{Config, storage::MemStorage, raw_node::RawNode, StateRole};
     #
-    # let config = Config { id: 1, ..Default::default() };
+    # let config = Config { id: 1.to_string(), ..Default::default() };
     # config.validate().unwrap();
-    # let store = MemStorage::new_with_conf_state((vec![1], vec![]));
+    # let store = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
     # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
     # let mut node = RawNode::new(&config, store, &logger).unwrap();
     #
@@ -393,9 +393,9 @@ by one:
     # use raft::{Config, storage::MemStorage, raw_node::RawNode};
     # use raft::eraftpb::{EntryType, Entry, Message};
     #
-    # let config = Config { id: 1, ..Default::default() };
+    # let config = Config { id: 1.to_string(), ..Default::default() };
     # config.validate().unwrap();
-    # let store = MemStorage::new_with_conf_state((vec![1], vec![]));
+    # let store = MemStorage::new_with_conf_state((vec![1.to_string()], vec![]));
     # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
     # let mut node = RawNode::new(&config, store, &logger).unwrap();
     #
@@ -451,13 +451,13 @@ For example to promote a learner 4 and demote an existing voter 3:
 # use protobuf::Message as PbMessage;
 # use slog::{Drain, o};
 #
-# let mut config = Config { id: 1, ..Default::default() };
-# let store = MemStorage::new_with_conf_state((vec![1, 2], vec![]));
+# let mut config = Config { id: 1.to_string(), ..Default::default() };
+# let store = MemStorage::new_with_conf_state((vec![1.to_string(), 2.to_string()], vec![]));
 # let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
 # let mut node = RawNode::new(&mut config, store, &logger).unwrap();
 let steps = vec![
-    raft_proto::new_conf_change_single(4, ConfChangeType::AddNode),
-    raft_proto::new_conf_change_single(3, ConfChangeType::RemoveNode),
+    raft_proto::new_conf_change_single(4.to_string(), ConfChangeType::AddNode),
+    raft_proto::new_conf_change_single(3.to_string(), ConfChangeType::RemoveNode),
 ];
 let mut cc = ConfChangeV2::default();
 cc.set_changes(steps.into());

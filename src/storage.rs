@@ -57,7 +57,7 @@ impl RaftState {
 }
 
 /// Records the context of the caller who calls entries() of Storage trait.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct GetEntriesContext(pub(crate) GetEntriesFor);
 
 impl GetEntriesContext {
@@ -76,12 +76,12 @@ impl GetEntriesContext {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) enum GetEntriesFor {
     // for sending entries to followers
     SendAppend {
         /// the peer id to which the entries are going to send
-        to: u64,
+        to: String,
         /// the term when the request is issued
         term: u64,
         /// whether to exhaust all the entries
@@ -156,7 +156,7 @@ pub trait Storage {
     /// snapshot and call snapshot later.
     /// A snapshot's index must not be less than the `request_index`.
     /// `to` indicates which peer is requesting the snapshot.
-    fn snapshot(&self, request_index: u64, to: u64) -> Result<Snapshot>;
+    fn snapshot(&self, request_index: u64, to: String) -> Result<Snapshot>;
 }
 
 /// The Memory Storage Core instance holds the actual state of the storage struct. To access this
@@ -504,7 +504,7 @@ impl Storage for MemStorage {
     }
 
     /// Implements the Storage trait.
-    fn snapshot(&self, request_index: u64, _to: u64) -> Result<Snapshot> {
+    fn snapshot(&self, request_index: u64, _to: String) -> Result<Snapshot> {
         let mut core = self.wl();
         if core.trigger_snap_unavailable {
             core.trigger_snap_unavailable = false;
@@ -521,6 +521,7 @@ impl Storage for MemStorage {
 
 #[cfg(test)]
 mod test {
+    use protobuf::RepeatedField;
     use std::panic::{self, AssertUnwindSafe};
 
     use protobuf::Message as PbMessage;
@@ -541,11 +542,11 @@ mod test {
         m.compute_size()
     }
 
-    fn new_snapshot(index: u64, term: u64, voters: Vec<u64>) -> Snapshot {
+    fn new_snapshot(index: u64, term: u64, voters: Vec<String>) -> Snapshot {
         let mut s = Snapshot::default();
         s.mut_metadata().index = index;
         s.mut_metadata().term = term;
-        s.mut_metadata().mut_conf_state().voters = voters;
+        s.mut_metadata().mut_conf_state().voters = voters.into();
         s
     }
 
@@ -703,9 +704,9 @@ mod test {
     #[test]
     fn test_storage_create_snapshot() {
         let ents = vec![new_entry(3, 3), new_entry(4, 4), new_entry(5, 5)];
-        let nodes = vec![1, 2, 3];
+        let nodes = vec!["1".to_string(), "2".to_string(), "3".to_string()];
         let mut conf_state = ConfState::default();
-        conf_state.voters = nodes.clone();
+        conf_state.voters = RepeatedField::from_vec(nodes.clone());
 
         let unavailable = Err(RaftError::Store(
             StorageError::SnapshotTemporarilyUnavailable,
@@ -727,7 +728,7 @@ mod test {
                 storage.wl().trigger_snap_unavailable();
             }
 
-            let result = storage.snapshot(windex, 0);
+            let result = storage.snapshot(windex, "0".to_string());
             if result != wresult {
                 panic!("#{}: want {:?}, got {:?}", i, wresult, result);
             }
@@ -799,7 +800,7 @@ mod test {
 
     #[test]
     fn test_storage_apply_snapshot() {
-        let nodes = vec![1, 2, 3];
+        let nodes = vec!["1".to_string(), "2".to_string(), "3".to_string()];
         let storage = MemStorage::new();
 
         // Apply snapshot successfully

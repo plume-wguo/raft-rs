@@ -25,7 +25,7 @@ use super::{
 #[derive(Clone)]
 pub struct Config {
     /// The identity of the local raft. It cannot be 0, and must be unique in the group.
-    pub id: u64,
+    pub id: String,
 
     /// The number of node.tick invocations that must pass between
     /// elections. That is, if a follower does not receive any message from the
@@ -111,7 +111,7 @@ impl Default for Config {
     fn default() -> Self {
         const HEARTBEAT_TICK: usize = 2;
         Self {
-            id: 0,
+            id: "localhost".to_string(),
             election_tick: HEARTBEAT_TICK * 10,
             heartbeat_tick: HEARTBEAT_TICK,
             applied: 0,
@@ -135,7 +135,7 @@ impl Default for Config {
 
 impl Config {
     /// Creates a new config.
-    pub fn new(id: u64) -> Self {
+    pub fn new(id: String) -> Self {
         Self {
             id,
             ..Self::default()

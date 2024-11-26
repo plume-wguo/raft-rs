@@ -13,17 +13,17 @@ pub fn bench_raft(c: &mut Criterion) {
 fn new_storage(voters: usize, learners: usize) -> MemStorage {
     let mut cc = ConfState::default();
     for i in 1..=voters {
-        cc.voters.push(i as u64);
+        cc.voters.push(i.to_string());
     }
     for i in 1..=learners {
-        cc.learners.push(voters as u64 + i as u64);
+        cc.learners.push((voters as u64 + i as u64).to_string());
     }
     MemStorage::new_with_conf_state(cc)
 }
 
 fn quick_raft(storage: MemStorage, logger: &slog::Logger) -> Raft<MemStorage> {
-    let id = 1;
-    let config = Config::new(id);
+    let id = "1";
+    let config = Config::new(id.to_string());
     Raft::new(&config, storage, logger).unwrap()
 }
 

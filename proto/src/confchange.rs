@@ -7,7 +7,7 @@ use std::borrow::Cow;
 use std::fmt::Write;
 
 /// Creates a `ConfChangeSingle`.
-pub fn new_conf_change_single(node_id: u64, ty: ConfChangeType) -> ConfChangeSingle {
+pub fn new_conf_change_single(node_id: String, ty: ConfChangeType) -> ConfChangeSingle {
     let mut single = ConfChangeSingle::default();
     single.node_id = node_id;
     single.set_change_type(ty);
@@ -83,7 +83,7 @@ impl ConfChangeI for ConfChange {
     #[inline]
     fn into_v2(mut self) -> ConfChangeV2 {
         let mut cc = ConfChangeV2::default();
-        let single = new_conf_change_single(self.node_id, self.get_change_type());
+        let single = new_conf_change_single(self.node_id.clone(), self.get_change_type());
         cc.mut_changes().push(single);
         cc.set_context(self.take_context());
         cc

@@ -301,7 +301,7 @@ impl<T: Storage> RawNode<T> {
     #[allow(clippy::new_ret_no_self)]
     /// Create a new RawNode given some [`Config`].
     pub fn new(config: &Config, store: T, logger: &Logger) -> Result<Self> {
-        assert_ne!(config.id, 0, "config.id must not be zero");
+        assert_ne!(config.id, "", "config.id must not be zero");
         let r = Raft::new(config, store, logger)?;
         let mut rn = RawNode {
             raft: r,
@@ -316,7 +316,7 @@ impl<T: Storage> RawNode<T> {
         info!(
             rn.raft.logger,
             "RawNode created with id {id}.",
-            id = rn.raft.id
+            id = rn.raft.id.clone()
         );
         Ok(rn)
     }
@@ -355,7 +355,7 @@ impl<T: Storage> RawNode<T> {
     pub fn propose(&mut self, context: Vec<u8>, data: Vec<u8>) -> Result<()> {
         let mut m = Message::default();
         m.set_msg_type(MessageType::MsgPropose);
-        m.from = self.raft.id;
+        m.from = self.raft.id.clone();
         let mut e = Entry::default();
         e.data = data.into();
         e.context = context.into();
@@ -404,7 +404,7 @@ impl<T: Storage> RawNode<T> {
         if is_local_msg(m.get_msg_type()) {
             return Err(Error::StepLocalMsg);
         }
-        if self.raft.prs().get(m.from).is_some() || !is_response_msg(m.get_msg_type()) {
+        if self.raft.prs().get(m.from.clone()).is_some() || !is_response_msg(m.get_msg_type()) {
             return self.raft.step(m);
         }
         Err(Error::StepPeerNotFound)
@@ -428,15 +428,15 @@ impl<T: Storage> RawNode<T> {
                     // term or leadership has changed
                     return;
                 }
-                if self.raft.prs().get(to).is_none() {
+                if self.raft.prs().get(to.clone()).is_none() {
                     // the peer has been removed, do nothing
                     return;
                 }
 
                 if aggressively {
-                    self.raft.send_append_aggressively(to)
+                    self.raft.send_append_aggressively(to.clone())
                 } else {
-                    self.raft.send_append(to)
+                    self.raft.send_append(to.clone())
                 }
             }
             GetEntriesFor::Empty(can_async) if can_async => {}
@@ -723,7 +723,7 @@ impl<T: Storage> RawNode<T> {
     }
 
     /// ReportUnreachable reports the given node is not reachable for the last send.
-    pub fn report_unreachable(&mut self, id: u64) {
+    pub fn report_unreachable(&mut self, id: String) {
         let mut m = Message::default();
         m.set_msg_type(MessageType::MsgUnreachable);
         m.from = id;
@@ -732,7 +732,7 @@ impl<T: Storage> RawNode<T> {
     }
 
     /// ReportSnapshot reports the status of the sent snapshot.
-    pub fn report_snapshot(&mut self, id: u64, status: SnapshotStatus) {
+    pub fn report_snapshot(&mut self, id: String, status: SnapshotStatus) {
         let rej = status == SnapshotStatus::Failure;
         let mut m = Message::default();
         m.set_msg_type(MessageType::MsgSnapStatus);
@@ -750,7 +750,7 @@ impl<T: Storage> RawNode<T> {
     }
 
     /// TransferLeader tries to transfer leadership to the given transferee.
-    pub fn transfer_leader(&mut self, transferee: u64) {
+    pub fn transfer_leader(&mut self, transferee: String) {
         let mut m = Message::default();
         m.set_msg_type(MessageType::MsgTransferLeader);
         m.from = transferee;

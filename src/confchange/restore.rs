@@ -45,7 +45,7 @@ fn to_conf_change_single(cs: &ConfState) -> (Vec<ConfChangeSingle>, Vec<ConfChan
         // If there are outgoing voters, first add them one by one so that the
         // (non-joint) config has them all.
         outgoing.push(raft_proto::new_conf_change_single(
-            *id,
+            id.clone(),
             ConfChangeType::AddNode,
         ));
     }
@@ -56,20 +56,20 @@ fn to_conf_change_single(cs: &ConfState) -> (Vec<ConfChangeSingle>, Vec<ConfChan
     // First, we'll remove all of the outgoing voters.
     for id in cs.get_voters_outgoing() {
         incoming.push(raft_proto::new_conf_change_single(
-            *id,
+            id.clone(),
             ConfChangeType::RemoveNode,
         ));
     }
     // Then we'll add the incoming voters and learners.
     for id in cs.get_voters() {
         incoming.push(raft_proto::new_conf_change_single(
-            *id,
+            id.clone(),
             ConfChangeType::AddNode,
         ));
     }
     for id in cs.get_learners() {
         incoming.push(raft_proto::new_conf_change_single(
-            *id,
+            id.clone(),
             ConfChangeType::AddLearnerNode,
         ));
     }
@@ -77,7 +77,7 @@ fn to_conf_change_single(cs: &ConfState) -> (Vec<ConfChangeSingle>, Vec<ConfChan
     // are currently voters in the outgoing config.
     for id in cs.get_learners_next() {
         incoming.push(raft_proto::new_conf_change_single(
-            *id,
+            id.clone(),
             ConfChangeType::AddLearnerNode,
         ));
     }
@@ -89,6 +89,7 @@ fn to_conf_change_single(cs: &ConfState) -> (Vec<ConfChangeSingle>, Vec<ConfChan
 ///
 /// TODO(jay) find a way to only take `ProgressMap` instead of a whole tracker.
 pub fn restore(tracker: &mut ProgressTracker, next_idx: u64, cs: &ConfState) -> Result<()> {
+    println!("add progress tracker for {:?} in restore", cs);
     let (outgoing, incoming) = to_conf_change_single(cs);
     if outgoing.is_empty() {
         for i in incoming {

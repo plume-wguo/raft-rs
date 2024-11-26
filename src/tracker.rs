@@ -43,7 +43,7 @@ pub struct Configuration {
     /// simplifies the implementation since it allows peers to have clarity about
     /// its current role without taking into account joint consensus.
     #[get = "pub"]
-    pub(crate) learners: HashSet<u64>,
+    pub(crate) learners: HashSet<String>,
     /// When we turn a voter into a learner during a joint consensus transition,
     /// we cannot add the learner directly when entering the joint state. This is
     /// because this would violate the invariant that the intersection of
@@ -79,7 +79,7 @@ pub struct Configuration {
     /// right away when entering the joint configuration, so that it is caught up
     /// as soon as possible.
     #[get = "pub"]
-    pub(crate) learners_next: HashSet<u64>,
+    pub(crate) learners_next: HashSet<String>,
     /// True if the configuration is joint and a transition to the incoming
     /// configuration should be carried out automatically by Raft when this is
     /// possible. If false, the configuration will be joint until the application
@@ -135,8 +135,8 @@ impl std::fmt::Display for Configuration {
 impl Configuration {
     /// Create a new configuration with the given configuration.
     pub fn new(
-        voters: impl IntoIterator<Item = u64>,
-        learners: impl IntoIterator<Item = u64>,
+        voters: impl IntoIterator<Item = String>,
+        learners: impl IntoIterator<Item = String>,
     ) -> Self {
         Self {
             voters: JointConfig::new(voters.into_iter().collect()),
@@ -159,8 +159,8 @@ impl Configuration {
     pub fn to_conf_state(&self) -> ConfState {
         // Note: Different from etcd, we don't sort.
         let mut state = ConfState::default();
-        state.set_voters(self.voters.incoming.raw_slice());
-        state.set_voters_outgoing(self.voters.outgoing.raw_slice());
+        state.set_voters(self.voters.incoming.raw_slice().into());
+        state.set_voters_outgoing(self.voters.outgoing.raw_slice().into());
         state.set_learners(self.learners.iter().cloned().collect());
         state.set_learners_next(self.learners_next.iter().cloned().collect());
         state.auto_leave = self.auto_leave;
@@ -175,10 +175,10 @@ impl Configuration {
     }
 }
 
-pub type ProgressMap = HashMap<u64, Progress>;
+pub type ProgressMap = HashMap<String, Progress>;
 
 impl AckedIndexer for ProgressMap {
-    fn acked_index(&self, voter_id: u64) -> Option<Index> {
+    fn acked_index(&self, voter_id: String) -> Option<Index> {
         self.get(&voter_id).map(|p| Index {
             index: p.matched,
             group_id: p.commit_group_id,
@@ -197,7 +197,7 @@ pub struct ProgressTracker {
     conf: Configuration,
     #[doc(hidden)]
     #[get = "pub"]
-    votes: HashMap<u64, bool>,
+    votes: HashMap<String, bool>,
     #[get = "pub(crate)"]
     max_inflight: usize,
 
@@ -248,13 +248,13 @@ impl ProgressTracker {
 
     /// Grabs a reference to the progress of a node.
     #[inline]
-    pub fn get(&self, id: u64) -> Option<&Progress> {
+    pub fn get(&self, id: String) -> Option<&Progress> {
         self.progress.get(&id)
     }
 
     /// Grabs a mutable reference to the progress of a node.
     #[inline]
-    pub fn get_mut(&mut self, id: u64) -> Option<&mut Progress> {
+    pub fn get_mut(&mut self, id: String) -> Option<&mut Progress> {
         self.progress.get_mut(&id)
     }
 
@@ -263,7 +263,7 @@ impl ProgressTracker {
     /// **Note:** Do not use this for majority/quorum calculation. The Raft node may be
     /// transitioning to a new configuration and have two quorums. Use `has_quorum` instead.
     #[inline]
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&u64, &Progress)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&String, &Progress)> {
         self.progress.iter()
     }
 
@@ -272,7 +272,7 @@ impl ProgressTracker {
     /// **Note:** Do not use this for majority/quorum calculation. The Raft node may be
     /// transitioning to a new configuration and have two quorums. Use `has_quorum` instead.
     #[inline]
-    pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (&u64, &mut Progress)> {
+    pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (&String, &mut Progress)> {
         self.progress.iter_mut()
     }
 
@@ -294,7 +294,7 @@ impl ProgressTracker {
 
     /// Records that the node with the given id voted for this Raft
     /// instance if v == true (and declined it otherwise).
-    pub fn record_vote(&mut self, id: u64, vote: bool) {
+    pub fn record_vote(&mut self, id: String, vote: bool) {
         self.votes.entry(id).or_insert(vote);
     }
 
@@ -307,7 +307,7 @@ impl ProgressTracker {
         // as well get it right.
         let (mut granted, mut rejected) = (0, 0);
         for (id, vote) in &self.votes {
-            if !self.conf.voters.contains(*id) {
+            if !self.conf.voters.contains(id.clone()) {
                 continue;
             }
             if *vote {
@@ -325,7 +325,7 @@ impl ProgressTracker {
     /// If it is still eligible, it should continue polling nodes and checking.
     /// Eventually, the election will result in this returning either `Elected`
     /// or `Ineligible`, meaning the election can be concluded.
-    pub fn vote_result(&self, votes: &HashMap<u64, bool>) -> VoteResult {
+    pub fn vote_result(&self, votes: &HashMap<String, bool>) -> VoteResult {
         self.conf.voters.vote_result(|id| votes.get(&id).cloned())
     }
 
@@ -333,17 +333,17 @@ impl ProgressTracker {
     /// Doing this will set the `recent_active` of each peer to false.
     ///
     /// This should only be called by the leader.
-    pub fn quorum_recently_active(&mut self, perspective_of: u64) -> bool {
+    pub fn quorum_recently_active(&mut self, perspective_of: String) -> bool {
         let mut active =
             HashSet::with_capacity_and_hasher(self.progress.len(), DefaultHashBuilder::default());
         for (id, pr) in &mut self.progress {
             if *id == perspective_of {
                 pr.recent_active = true;
-                active.insert(*id);
+                active.insert(id.clone());
             } else if pr.recent_active {
                 // It doesn't matter whether it's learner. As we calculate quorum
                 // by actual ids instead of count.
-                active.insert(*id);
+                active.insert(id.clone());
                 pr.recent_active = false;
             }
         }
@@ -354,7 +354,7 @@ impl ProgressTracker {
     ///
     /// This is the only correct way to verify you have reached a quorum for the whole group.
     #[inline]
-    pub fn has_quorum(&self, potential_quorum: &HashSet<u64>) -> bool {
+    pub fn has_quorum(&self, potential_quorum: &HashSet<String>) -> bool {
         self.conf
             .voters
             .vote_result(|id| potential_quorum.get(&id).map(|_| true))
@@ -377,6 +377,7 @@ impl ProgressTracker {
                     // Otherwise, CheckQuorum may cause us to step down if it is invoked
                     // before the added node has had a chance to communicate with us.
                     pr.recent_active = true;
+                    println!("add progress tracker for {:?}", pr);
                     self.progress.insert(id, pr);
                 }
                 MapChangeType::Remove => {

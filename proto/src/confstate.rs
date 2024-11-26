@@ -2,7 +2,7 @@
 
 use crate::eraftpb::ConfState;
 
-fn eq_without_order(lhs: &[u64], rhs: &[u64]) -> bool {
+fn eq_without_order(lhs: &[String], rhs: &[String]) -> bool {
     for l in lhs {
         if !rhs.contains(l) {
             return false;

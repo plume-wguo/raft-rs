@@ -481,7 +481,7 @@ impl<T: Storage> RaftLog<T> {
     }
 
     /// Returns the current snapshot
-    pub fn snapshot(&self, request_index: u64, to: u64) -> Result<Snapshot> {
+    pub fn snapshot(&self, request_index: u64, to: String) -> Result<Snapshot> {
         if let Some(snap) = self.unstable.snapshot.as_ref() {
             if snap.get_metadata().index >= request_index {
                 return Ok(snap.clone());
@@ -615,7 +615,7 @@ impl<T: Storage> RaftLog<T> {
         F: FnMut(Vec<Entry>) -> bool,
     {
         while lo < hi {
-            let ents = self.slice(lo, hi, page_size, context)?;
+            let ents = self.slice(lo, hi, page_size, context.clone())?;
             if ents.is_empty() {
                 return Err(Error::Store(StorageError::Other(
                     format!("got 0 entries in [{}, {})", lo, hi).into(),

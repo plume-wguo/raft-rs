@@ -2,7 +2,7 @@
 
 use crate::eraftpb::{ConfChangeSingle, ConfChangeType};
 use crate::tracker::{Configuration, ProgressMap, ProgressTracker};
-use crate::{Error, Result};
+use crate::{Error, Result, INVALID_ID};
 
 /// Change log for progress map.
 pub enum MapChangeType {
@@ -11,7 +11,7 @@ pub enum MapChangeType {
 }
 
 /// Changes made by `Changer`.
-pub type MapChange = Vec<(u64, MapChangeType)>;
+pub type MapChange = Vec<(String, MapChangeType)>;
 
 /// A map that stores updates instead of apply them directly.
 pub struct IncrChangeMap<'a> {
@@ -24,11 +24,11 @@ impl IncrChangeMap<'_> {
         self.changes
     }
 
-    fn contains(&self, id: u64) -> bool {
+    fn contains(&self, id: &str) -> bool {
         match self.changes.iter().rfind(|(i, _)| *i == id) {
             Some((_, MapChangeType::Remove)) => false,
             Some((_, MapChangeType::Add)) => true,
-            None => self.base.contains_key(&id),
+            None => self.base.contains_key(id),
         }
     }
 }
@@ -120,7 +120,7 @@ impl Changer<'_> {
 
         for id in &*cfg.voters.outgoing {
             if !cfg.voters.incoming.contains(id) && !cfg.learners.contains(id) {
-                prs.changes.push((*id, MapChangeType::Remove));
+                prs.changes.push((id.clone(), MapChangeType::Remove));
             }
         }
 
@@ -168,16 +168,16 @@ impl Changer<'_> {
         ccs: &[ConfChangeSingle],
     ) -> Result<()> {
         for cc in ccs {
-            if cc.node_id == 0 {
+            if cc.node_id == INVALID_ID {
                 // Replaces the NodeID with zero if it decides (downstream of
                 // raft) to not apply a change, so we have to have explicit code
                 // here to ignore these.
                 continue;
             }
             match cc.get_change_type() {
-                ConfChangeType::AddNode => self.make_voter(cfg, prs, cc.node_id),
-                ConfChangeType::AddLearnerNode => self.make_learner(cfg, prs, cc.node_id),
-                ConfChangeType::RemoveNode => self.remove(cfg, prs, cc.node_id),
+                ConfChangeType::AddNode => self.make_voter(cfg, prs, cc.node_id.clone()),
+                ConfChangeType::AddLearnerNode => self.make_learner(cfg, prs, cc.node_id.clone()),
+                ConfChangeType::RemoveNode => self.remove(cfg, prs, cc.node_id.clone()),
             }
         }
         if cfg.voters().incoming.is_empty() {
@@ -187,13 +187,13 @@ impl Changer<'_> {
     }
 
     /// Adds or promotes the given ID to be a voter in the incoming majority config.
-    fn make_voter(&self, cfg: &mut Configuration, prs: &mut IncrChangeMap, id: u64) {
-        if !prs.contains(id) {
-            self.init_progress(cfg, prs, id, false);
+    fn make_voter(&self, cfg: &mut Configuration, prs: &mut IncrChangeMap, id: String) {
+        if !prs.contains(&id) {
+            self.init_progress(cfg, prs, id.clone(), false);
             return;
         }
 
-        cfg.voters.incoming.insert(id);
+        cfg.voters.incoming.insert(id.clone());
         cfg.learners.remove(&id);
         cfg.learners_next.remove(&id);
     }
@@ -209,8 +209,8 @@ impl Changer<'_> {
     /// because then we'd have to track a peer as a voter and learner simultaneously.
     /// Instead, we add the learner to LearnersNext, so that it will be added to Learners
     /// the moment the outgoing config is removed by LeaveJoint().
-    fn make_learner(&self, cfg: &mut Configuration, prs: &mut IncrChangeMap, id: u64) {
-        if !prs.contains(id) {
+    fn make_learner(&self, cfg: &mut Configuration, prs: &mut IncrChangeMap, id: String) {
+        if !prs.contains(&id) {
             self.init_progress(cfg, prs, id, true);
             return;
         }
@@ -236,12 +236,12 @@ impl Changer<'_> {
     }
 
     /// Removes this peer as a voter or learner from the incoming config.
-    fn remove(&self, cfg: &mut Configuration, prs: &mut IncrChangeMap, id: u64) {
-        if !prs.contains(id) {
+    fn remove(&self, cfg: &mut Configuration, prs: &mut IncrChangeMap, id: String) {
+        if !prs.contains(&id) {
             return;
         }
 
-        cfg.voters.incoming.remove(&id);
+        cfg.voters.incoming.remove(&id.clone());
         cfg.learners.remove(&id);
         cfg.learners_next.remove(&id);
 
@@ -256,13 +256,13 @@ impl Changer<'_> {
         &self,
         cfg: &mut Configuration,
         prs: &mut IncrChangeMap,
-        id: u64,
+        id: String,
         is_learner: bool,
     ) {
         if !is_learner {
-            cfg.voters.incoming.insert(id);
+            cfg.voters.incoming.insert(id.clone());
         } else {
-            cfg.learners.insert(id);
+            cfg.learners.insert(id.clone());
         }
         prs.changes.push((id, MapChangeType::Add));
     }
@@ -292,15 +292,15 @@ fn check_invariants(cfg: &Configuration, prs: &IncrChangeMap) -> Result<()> {
     // transitioning from an empty config into any other legal and non-empty
     // config.
     for id in cfg.voters().ids().iter() {
-        if !prs.contains(id) {
+        if !prs.contains(&id) {
             return Err(Error::ConfChangeError(format!(
                 "no progress for voter {}",
-                id
+                id.clone()
             )));
         }
     }
     for id in &cfg.learners {
-        if !prs.contains(*id) {
+        if !prs.contains(&id) {
             return Err(Error::ConfChangeError(format!(
                 "no progress for learner {}",
                 id
@@ -321,7 +321,7 @@ fn check_invariants(cfg: &Configuration, prs: &IncrChangeMap) -> Result<()> {
         }
     }
     for id in &cfg.learners_next {
-        if !prs.contains(*id) {
+        if !prs.contains(&id) {
             return Err(Error::ConfChangeError(format!(
                 "no progress for learner(next) {}",
                 id

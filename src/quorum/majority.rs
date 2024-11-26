@@ -12,7 +12,7 @@ use std::{cmp, slice};
 /// A set of IDs that uses majority quorums to make decisions.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Configuration {
-    voters: HashSet<u64>,
+    voters: HashSet<String>,
 }
 
 impl std::fmt::Display for Configuration {
@@ -31,7 +31,7 @@ impl std::fmt::Display for Configuration {
 
 impl Configuration {
     /// Creates a new configuration using the given IDs.
-    pub fn new(voters: HashSet<u64>) -> Configuration {
+    pub fn new(voters: HashSet<String>) -> Configuration {
         Configuration { voters }
     }
 
@@ -43,19 +43,19 @@ impl Configuration {
     }
 
     /// Returns an iterator over voters.
-    pub fn ids(&self) -> Iter<'_, u64> {
+    pub fn ids(&self) -> Iter<'_, String> {
         self.voters.iter()
     }
 
     /// Returns the MajorityConfig as a sorted slice.
-    pub fn slice(&self) -> Vec<u64> {
+    pub fn slice(&self) -> Vec<String> {
         let mut voters = self.raw_slice();
         voters.sort_unstable();
         voters
     }
 
     /// Returns the MajorityConfig as a slice.
-    pub fn raw_slice(&self) -> Vec<u64> {
+    pub fn raw_slice(&self) -> Vec<String> {
         self.voters.iter().cloned().collect()
     }
 
@@ -78,7 +78,7 @@ impl Configuration {
         let mut heap_arr;
         let matched = if self.voters.len() <= 7 {
             for (i, v) in self.voters.iter().enumerate() {
-                stack_arr[i] = MaybeUninit::new(l.acked_index(*v).unwrap_or_default());
+                stack_arr[i] = MaybeUninit::new(l.acked_index(v.clone()).unwrap_or_default());
             }
             unsafe {
                 slice::from_raw_parts_mut(stack_arr.as_mut_ptr() as *mut _, self.voters.len())
@@ -86,7 +86,7 @@ impl Configuration {
         } else {
             let mut buf = Vec::with_capacity(self.voters.len());
             for v in &self.voters {
-                buf.push(l.acked_index(*v).unwrap_or_default());
+                buf.push(l.acked_index(v.clone()).unwrap_or_default());
             }
             heap_arr = Some(buf);
             heap_arr.as_mut().unwrap().as_mut_slice()
@@ -127,7 +127,7 @@ impl Configuration {
     /// a result indicating whether the vote is pending (i.e. neither a quorum of
     /// yes/no has been reached), won (a quorum of yes has been reached), or lost (a
     /// quorum of no has been reached).
-    pub fn vote_result(&self, check: impl Fn(u64) -> Option<bool>) -> VoteResult {
+    pub fn vote_result(&self, check: impl Fn(String) -> Option<bool>) -> VoteResult {
         if self.voters.is_empty() {
             // By convention, the elections on an empty config win. This comes in
             // handy with joint quorums because it'll make a half-populated joint
@@ -137,7 +137,7 @@ impl Configuration {
 
         let (mut yes, mut missing) = (0, 0);
         for v in &self.voters {
-            match check(*v) {
+            match check(v.clone()) {
                 Some(true) => yes += 1,
                 None => missing += 1,
                 _ => (),
@@ -177,7 +177,7 @@ impl Configuration {
         }
 
         struct Tup {
-            id: u64,
+            id: String,
             idx: Option<Index>,
             // length of bar displayed for this Tup
             bar: usize,
@@ -189,13 +189,14 @@ impl Configuration {
 
         let mut info = Vec::with_capacity(n);
 
-        for &id in &self.voters {
-            let idx = l.acked_index(id);
+        for id in self.voters.clone() {
+            let idx = l.acked_index(id.clone());
             info.push(Tup { id, idx, bar: 0 })
         }
 
         info.sort_by(|a, b| {
-            (a.idx.unwrap_or_default().index, a.id).cmp(&(b.idx.unwrap_or_default().index, b.id))
+            (a.idx.unwrap_or_default().index, a.id.clone())
+                .cmp(&(b.idx.unwrap_or_default().index, b.id.clone()))
         });
 
         for i in 0..n {
@@ -239,17 +240,17 @@ impl Configuration {
 }
 
 impl Deref for Configuration {
-    type Target = HashSet<u64>;
+    type Target = HashSet<String>;
 
     #[inline]
-    fn deref(&self) -> &HashSet<u64> {
+    fn deref(&self) -> &HashSet<String> {
         &self.voters
     }
 }
 
 impl DerefMut for Configuration {
     #[inline]
-    fn deref_mut(&mut self) -> &mut HashSet<u64> {
+    fn deref_mut(&mut self) -> &mut HashSet<String> {
         &mut self.voters
     }
 }
