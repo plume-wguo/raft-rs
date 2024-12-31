@@ -89,7 +89,6 @@ fn to_conf_change_single(cs: &ConfState) -> (Vec<ConfChangeSingle>, Vec<ConfChan
 ///
 /// TODO(jay) find a way to only take `ProgressMap` instead of a whole tracker.
 pub fn restore(tracker: &mut ProgressTracker, next_idx: u64, cs: &ConfState) -> Result<()> {
-    println!("add progress tracker for {:?} in restore", cs);
     let (outgoing, incoming) = to_conf_change_single(cs);
     if outgoing.is_empty() {
         for i in incoming {

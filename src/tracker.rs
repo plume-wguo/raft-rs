@@ -377,10 +377,11 @@ impl ProgressTracker {
                     // Otherwise, CheckQuorum may cause us to step down if it is invoked
                     // before the added node has had a chance to communicate with us.
                     pr.recent_active = true;
-                    println!("add progress tracker for {:?}", pr);
+                    println!("add progress tracker for {:?}", &id);
                     self.progress.insert(id, pr);
                 }
                 MapChangeType::Remove => {
+                    println!("remove progress tracker for {}", &id);
                     self.progress.remove(&id);
                 }
             }
