@@ -381,6 +381,7 @@ impl ProgressTracker {
                     self.progress.insert(id, pr);
                 }
                 MapChangeType::Remove => {
+                    println!("remove progress tracker for {}", &id);
                     self.progress.remove(&id);
                 }
             }

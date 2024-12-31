@@ -2072,7 +2072,6 @@ impl<T: Storage> Raft<T> {
                 return Ok(());
             }
             MessageType::MsgPropose => {
-                info!(self.logger, "step propose, {:?}", m);
                 if m.entries.is_empty() {
                     fatal!(self.logger, "stepped empty MsgProp");
                 }
@@ -2153,7 +2152,6 @@ impl<T: Storage> Raft<T> {
                     return Err(Error::ProposalDropped);
                 }
                 self.bcast_append();
-                info!(self.logger, "step propose return, {:?}", m);
                 return Ok(());
             }
             MessageType::MsgReadIndex => {
@@ -2814,10 +2812,13 @@ impl<T: Storage> Raft<T> {
         println!("apply conf change {:?}", cc);
         let mut changer = Changer::new(&self.prs);
         let (cfg, changes) = if cc.leave_joint() {
+            println!("apply conf change leave joint{:?}", cc);
             changer.leave_joint()?
         } else if let Some(auto_leave) = cc.enter_joint() {
+            println!("apply conf change enter joint joint{:?}", cc);
             changer.enter_joint(auto_leave, &cc.changes)?
         } else {
+            println!("apply conf change simple{:?}", cc);
             changer.simple(&cc.changes)?
         };
         self.prs
